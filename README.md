@@ -65,6 +65,12 @@ gradle-mono/
 
 # Alle Versionen anzeigen
 ./gradlew printAllVersions
+
+# Geänderte Projekte seit letztem Release anzeigen
+./gradlew listChangedProjects
+
+# Alle geänderten Dateien anzeigen
+./gradlew showChangedFiles
 ```
 
 ## 📦 Versionierung & Releases
@@ -81,6 +87,25 @@ Dieses Projekt nutzt **Axion Release Plugin** mit Git-Tags für semantische Vers
 | `fix:` | `fix(library-a): korrigiere NPE` | Patch: `1.0.0` → `1.0.1` |
 | `feat:` | `feat(library-a): neue Methode` | Minor: `1.0.0` → `1.1.0` |
 | `BREAKING CHANGE:` | `feat!: ändere API` | Major: `1.0.0` → `2.0.0` |
+
+### Automatische Änderungserkennung
+
+Das Projekt verfügt über ein **GitChangedProjectsPlugin**, das automatisch erkennt, welche Subprojekte sich seit dem letzten Release geändert haben:
+
+- **Analysiert Git-Diff** seit letztem Tag pro Subproject
+- **Erkennt unstaged/uncommitted Änderungen** für lokale Entwicklung
+- **Berücksichtigt nur relevante Subprojekte** beim Release
+
+```bash
+# Welche Projekte haben sich geändert?
+./gradlew listChangedProjects
+
+# Output-Beispiel:
+# === Changed Projects ===
+#   - library-a
+#   - library-b
+# ========================
+```
 
 ### Manuelles Release erstellen
 
@@ -191,6 +216,8 @@ echo 'include("library-c")' >> settings.gradle.kts
 ./gradlew currentVersion         # Aktuelle Version
 ./gradlew verifyRelease         # Release-Vorbereitung prüfen
 ./gradlew release               # Release erstellen
+./gradlew listChangedProjects   # Geänderte Subprojekte anzeigen
+./gradlew showChangedFiles      # Geänderte Dateien anzeigen
 ```
 
 ## 🔧 Konfiguration anpassen

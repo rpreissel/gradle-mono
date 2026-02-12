@@ -7,6 +7,9 @@ plugins {
     id("com.github.ben-manes.versions")
 }
 
+// Apply Git-based changed projects detection
+apply<GitChangedProjectsPlugin>()
+
 // Gemeinsame Eigenschaften für alle Subprojekte
 allprojects {
     group = "com.example.mono"
