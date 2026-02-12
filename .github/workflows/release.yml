@@ -1,0 +1,152 @@
+name: Release Changed Projects
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'library-**/**'
+      - '.github/workflows/release.yml'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  detect-changes:
+    name: Detect Changed Projects
+    runs-on: ubuntu-latest
+    outputs:
+      changed-projects: ${{ steps.detect.outputs.projects }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Benötigt gesamte Git-Historie
+      
+      - name: Detect changed projects
+        id: detect
+        run: |
+          # Finde alle geänderten Dateien seit letztem Tag oder HEAD~1
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            # Kein Tag vorhanden, nutze vorherigen Commit
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          else
+            # Nutze letzten Tag als Referenz
+            CHANGED_FILES=$(git diff --name-only $LAST_TAG HEAD)
+          fi
+          
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Extrahiere betroffene Projekte (library-*)
+          PROJECTS=$(echo "$CHANGED_FILES" | grep -E '^library-[^/]+/' | cut -d'/' -f1 | sort -u | jq -R -s -c 'split("\n")[:-1]')
+          
+          if [ "$PROJECTS" = "[]" ] || [ -z "$PROJECTS" ]; then
+            echo "No library projects changed"
+            echo "projects=[]" >> $GITHUB_OUTPUT
+          else
+            echo "Changed projects: $PROJECTS"
+            echo "projects=$PROJECTS" >> $GITHUB_OUTPUT
+          fi
+
+  release:
+    name: Release ${{ matrix.project }}
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed-projects != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: ${{ fromJson(needs.detect-changes.outputs.changed-projects) }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+      
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      
+      - name: Get current version
+        id: current-version
+        run: |
+          VERSION=$(./gradlew ${{ matrix.project }}:currentVersion -q --console=plain | tail -1)
+          echo "Current version of ${{ matrix.project }}: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Build project
+        run: ./gradlew ${{ matrix.project }}:build --no-daemon
+      
+      - name: Run tests
+        run: ./gradlew ${{ matrix.project }}:test --no-daemon
+      
+      - name: Create release tag
+        id: release
+        run: |
+          # Axion Release erstellt automatisch einen Tag basierend auf Commits
+          ./gradlew ${{ matrix.project }}:release --no-daemon
+          
+          # Hole die neue Version
+          NEW_VERSION=$(./gradlew ${{ matrix.project }}:currentVersion -q --console=plain | tail -1)
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Push tags
+        run: git push --tags
+      
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          ./gradlew ${{ matrix.project }}:publish --no-daemon
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ matrix.project }}/v${{ steps.release.outputs.version }}
+          name: ${{ matrix.project }} v${{ steps.release.outputs.version }}
+          body: |
+            Release of **${{ matrix.project }}** version ${{ steps.release.outputs.version }}
+            
+            ## Changes
+            See commit history for details.
+            
+            ## Artifacts
+            - JAR: Available in GitHub Packages
+            
+            ## Installation
+            
+            ### Gradle
+            ```kotlin
+            dependencies {
+                implementation("com.example.mono:${{ matrix.project }}:${{ steps.release.outputs.version }}")
+            }
+            ```
+            
+            ### Maven
+            ```xml
+            <dependency>
+                <groupId>com.example.mono</groupId>
+                <artifactId>${{ matrix.project }}</artifactId>
+                <version>${{ steps.release.outputs.version }}</version>
+            </dependency>
+            ```
+          files: |
+            ${{ matrix.project }}/build/libs/*.jar

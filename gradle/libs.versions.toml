@@ -1,0 +1,30 @@
+# Zentrale Dependency-Verwaltung für alle Subprojekte
+[versions]
+# Plugins
+axion-release = "1.18.11"
+spotless = "6.25.0"
+versions-plugin = "0.51.0"
+
+# Libraries
+junit-jupiter = "5.11.3"
+assertj = "3.26.3"
+mockito = "5.14.2"
+
+[libraries]
+# Testing
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit-jupiter" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+
+[bundles]
+# Bundle für alle Test-Dependencies
+testing = ["junit-jupiter-api", "junit-jupiter-params", "assertj-core", "mockito-core", "mockito-junit-jupiter"]
+
+[plugins]
+# Plugins für buildSrc
+axion-release = { id = "pl.allegro.tech.build.axion-release", version.ref = "axion-release" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+versions = { id = "com.github.ben-manes.versions", version.ref = "versions-plugin" }

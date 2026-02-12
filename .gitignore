@@ -1,0 +1,39 @@
+# Gradle Build-Dateien
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Kotlin
+.kotlin
+
+# IDE-spezifisch
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+bin/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Temporäre Dateien
+*.tmp
+*.bak
+*.swp
+*~
+
+# Test-Reports
+**/build/reports/
+**/build/test-results/
+
+# Lokale Konfiguration
+local.properties
