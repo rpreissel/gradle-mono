@@ -86,6 +86,74 @@ class GitChangedProjectsPlugin : Plugin<Project> {
         println("========================================\n")
       }
     }
+
+    // CI/CD Helper Task: Build only changed projects
+    rootProject.tasks.register("buildChangedProjects") {
+      group = "build"
+      description = "Builds only changed subprojects (CI/CD optimized)"
+      
+      notCompatibleWithConfigurationCache("Uses project state at execution time")
+
+      doLast {
+        val changedProjects = getChangedProjects(rootProject)
+        
+        if (changedProjects.isEmpty()) {
+          println("No changed projects detected")
+        } else {
+          println("Changed projects: ${changedProjects.joinToString(", ") { it.name }}")
+          changedProjects.forEach { project ->
+            println("Building ${project.name}...")
+            project.tasks.getByName("build").actions.forEach { action ->
+              action.execute(project.tasks.getByName("build"))
+            }
+          }
+        }
+      }
+    }
+
+    // CI/CD Helper Task: Test only changed projects  
+    rootProject.tasks.register("testChangedProjects") {
+      group = "verification"
+      description = "Tests only changed subprojects (CI/CD optimized)"
+      
+      notCompatibleWithConfigurationCache("Uses project state at execution time")
+
+      doLast {
+        val changedProjects = getChangedProjects(rootProject)
+        
+        if (changedProjects.isEmpty()) {
+          println("No changed projects detected")
+        } else {
+          println("Testing changed projects: ${changedProjects.joinToString(", ") { it.name }}")
+        }
+      }
+    }
+
+    // GitHub Actions Output Task
+    rootProject.tasks.register("ciSetChangedProjects") {
+      group = "ci"
+      description = "Outputs changed projects for GitHub Actions (sets GITHUB_OUTPUT)"
+      
+      notCompatibleWithConfigurationCache("Uses project state at execution time")
+
+      doLast {
+        val changedProjects = getChangedProjects(rootProject)
+        val projectNames = changedProjects.map { it.name }
+        val json = projectNames.joinToString(",", "[", "]") { "\"$it\"" }
+        
+        // GitHub Actions output format
+        val githubOutput = System.getenv("GITHUB_OUTPUT")
+        if (githubOutput != null) {
+          File(githubOutput).appendText("projects=$json\n")
+          File(githubOutput).appendText("has-changes=${projectNames.isNotEmpty()}\n")
+          println("Set GitHub Actions output: projects=$json")
+        } else {
+          // Local development fallback
+          println("projects=$json")
+          println("has-changes=${projectNames.isNotEmpty()}")
+        }
+      }
+    }
   }
 
   /**

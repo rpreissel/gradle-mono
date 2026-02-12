@@ -119,13 +119,15 @@ Das Projekt verfügt über ein **GitChangedProjectsPlugin**, das automatisch erk
 
 ### Automatisches Release (GitHub Actions)
 
-Bei jedem Push auf `main`:
+Bei jedem Push auf `main` mit Änderungen in `library-*`:
 
-1. **Änderungserkennung**: Workflow erkennt geänderte Subprojekte
-2. **Build & Test**: Alle Tests werden ausgeführt
+1. **Änderungserkennung**: `ciSetChangedProjects` Task findet geänderte Libs
+2. **Build & Test**: Nur geänderte Projekte werden gebaut und getestet (Matrix Strategy)
 3. **Version-Tag**: Neuer Git-Tag wird erstellt (z.B. `library-a/v1.2.3`)
 4. **GitHub Release**: Release mit JARs wird veröffentlicht
 5. **Publish**: Artifacts werden zu GitHub Packages hochgeladen
+
+**Workflow ist vollständig Gradle-basiert** - kein komplexes Bash-Scripting!
 
 **Wichtig**: Nutze Conventional Commits für automatische Versionierung!
 
@@ -212,13 +214,18 @@ echo 'include("library-c")' >> settings.gradle.kts
 ./gradlew publishToMavenLocal    # Lokal publishen zum Testen
 ./gradlew publish                # Zu Remote-Repository publishen
 
-# Versionierung
-./gradlew currentVersion         # Aktuelle Version
-./gradlew verifyRelease         # Release-Vorbereitung prüfen
-./gradlew release               # Release erstellen
-./gradlew listChangedProjects   # Geänderte Subprojekte anzeigen
-./gradlew listChangedProjectsJson # Geänderte Subprojekte als JSON (für CI/CD)
-./gradlew showChangedFiles      # Geänderte Dateien anzeigen
+# Versionierung & Changes
+./gradlew currentVersion             # Aktuelle Version
+./gradlew verifyRelease             # Release-Vorbereitung prüfen
+./gradlew release                   # Release erstellen
+./gradlew listChangedProjects       # Geänderte Subprojekte anzeigen
+./gradlew listChangedProjectsJson   # JSON-Output (für CI/CD)
+./gradlew showChangedFiles          # Geänderte Dateien anzeigen
+
+# CI/CD Helper Tasks
+./gradlew ciSetChangedProjects      # Setzt GitHub Actions Outputs
+./gradlew buildChangedProjects      # Baut nur geänderte Projekte
+./gradlew testChangedProjects       # Testet nur geänderte Projekte
 ```
 
 ## 🔧 Konfiguration anpassen
