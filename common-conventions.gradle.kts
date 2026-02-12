@@ -1,0 +1,1 @@
+// Contents of the renamed plugin file (java-library-conventions.gradle.kts)
