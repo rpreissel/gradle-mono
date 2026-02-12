@@ -22,6 +22,9 @@ tasks.register("printAllVersions") {
     group = "help"
     description = "Zeigt die Versionen aller Subprojekte an"
     
+    // Configuration Cache kompatibel
+    notCompatibleWithConfigurationCache("Uses subprojects at execution time")
+    
     doLast {
         println("\n=== Projekt-Versionen ===")
         subprojects.forEach { subproject ->
