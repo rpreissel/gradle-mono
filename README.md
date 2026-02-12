@@ -217,6 +217,7 @@ echo 'include("library-c")' >> settings.gradle.kts
 ./gradlew verifyRelease         # Release-Vorbereitung prüfen
 ./gradlew release               # Release erstellen
 ./gradlew listChangedProjects   # Geänderte Subprojekte anzeigen
+./gradlew listChangedProjectsJson # Geänderte Subprojekte als JSON (für CI/CD)
 ./gradlew showChangedFiles      # Geänderte Dateien anzeigen
 ```
 

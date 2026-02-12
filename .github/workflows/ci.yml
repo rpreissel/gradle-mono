@@ -10,8 +10,52 @@ permissions:
   contents: read
 
 jobs:
+  detect-changes:
+    name: Detect Changed Projects
+    runs-on: ubuntu-latest
+    outputs:
+      changed-projects: ${{ steps.detect.outputs.projects }}
+      has-changes: ${{ steps.detect.outputs.has-changes }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      
+      - name: Detect changed projects
+        id: detect
+        run: |
+          echo "=== Detecting changed projects ==="
+          
+          # Nutze JSON-Output für einfaches Parsing
+          PROJECTS_JSON=$(./gradlew listChangedProjectsJson --console=plain --quiet 2>&1 | tail -1)
+          
+          echo "Changed projects JSON: $PROJECTS_JSON"
+          
+          if [ "$PROJECTS_JSON" = "[]" ]; then
+            echo "No projects changed - will build all projects"
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+            echo "projects=[]" >> $GITHUB_OUTPUT
+          else
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "projects=$PROJECTS_JSON" >> $GITHUB_OUTPUT
+            echo "Changed projects: $PROJECTS_JSON"
+          fi
+
   build:
     name: Build and Test
+    needs: detect-changes
     runs-on: ubuntu-latest
     
     steps:
@@ -31,10 +75,36 @@ jobs:
         run: chmod +x gradlew
       
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon --stacktrace
+        run: |
+          if [ "${{ needs.detect-changes.outputs.has-changes }}" = "true" ]; then
+            # Baue nur geänderte Projekte
+            PROJECTS="${{ needs.detect-changes.outputs.changed-projects }}"
+            echo "Building changed projects: $PROJECTS"
+            for project in $(echo $PROJECTS | jq -r '.[]'); do
+              echo "Building $project..."
+              ./gradlew $project:build --no-daemon --stacktrace
+            done
+          else
+            # Keine spezifischen Änderungen - baue alles
+            echo "Building all projects..."
+            ./gradlew build --no-daemon --stacktrace
+          fi
       
       - name: Run tests
-        run: ./gradlew test --no-daemon
+        run: |
+          if [ "${{ needs.detect-changes.outputs.has-changes }}" = "true" ]; then
+            # Teste nur geänderte Projekte
+            PROJECTS="${{ needs.detect-changes.outputs.changed-projects }}"
+            echo "Testing changed projects: $PROJECTS"
+            for project in $(echo $PROJECTS | jq -r '.[]'); do
+              echo "Testing $project..."
+              ./gradlew $project:test --no-daemon
+            done
+          else
+            # Keine spezifischen Änderungen - teste alles
+            echo "Testing all projects..."
+            ./gradlew test --no-daemon
+          fi
       
       - name: Upload test reports
         if: always()

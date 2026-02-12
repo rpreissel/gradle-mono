@@ -46,6 +46,23 @@ class GitChangedProjectsPlugin : Plugin<Project> {
       }
     }
 
+    // Register task to list changed projects as JSON (for CI/CD)
+    rootProject.tasks.register("listChangedProjectsJson") {
+      group = "versioning"
+      description = "Lists changed subprojects as JSON array (for CI/CD)"
+      
+      notCompatibleWithConfigurationCache("Uses project state at execution time")
+
+      doLast {
+        val changedProjects = getChangedProjects(rootProject)
+        val projectNames = changedProjects.map { it.name }
+        
+        // Output als JSON-Array für einfaches Parsing in CI
+        val json = projectNames.joinToString(",", "[", "]") { "\"$it\"" }
+        println(json)
+      }
+    }
+
     // Register task to show which files changed
     rootProject.tasks.register("showChangedFiles") {
       group = "versioning"
